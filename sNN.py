@@ -40,7 +40,7 @@ class sNN():
         self.MIN_EPSILON = 0
         self.LAMBDA = 0.0005
         self.GAMMA = 0.95
-        self.BATCH_SIZE = 32
+        self.BATCH_SIZE = 2
         self.TAU = 0.08
         self.RANDOM_REWARD_STD = 1.0
         self.train_writer = tf.summary.create_file_writer(self.STORE_PATH + f"/DoubleQ_{dt.datetime.now().strftime('%d%m%Y%H%M')}")
@@ -49,16 +49,16 @@ class sNN():
         self.slither = slith
 
         self.primary_network = keras.Sequential([
-            keras.layers.Input(shape=(22,22)),
             keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(self.num_actions)
         ])
 
         self.target_network = keras.Sequential([
-            keras.layers.Input(shape=(22,22)),
             keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+    #        keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(self.num_actions)
         ])
 
@@ -80,16 +80,21 @@ class sNN():
         if memory.num_samples < self.BATCH_SIZE * 3:
             return 0
         batch = memory.sample(self.BATCH_SIZE)
-        states = np.array([val[0] for val in batch])
+        #states = np.array([val[0] for val in batch])
+        states = np.array([item[0].to_numpy().reshape(1,-1)[0] for item in batch])
         actions = np.array([val[1] for val in batch])
         rewards = np.array([val[2] for val in batch])
-        next_states = np.array([(np.zeros(self.state_size)
-                                 if val[3] is None else val[3]) for val in batch])
+        # next_states = np.array([(np.zeros(self.state_size)
+        #                          if val[3] is None else val[3]) for val in batch])
 
+        next_states = np.array([(np.zeros(self.state_size)
+                                 if item[3] is None else item[3].to_numpy().reshape(1,-1)[0]) for item in batch])
 
 
         # predict Q(s,a) given the batch of states
+        #print(states.shape)
         prim_qt = primary_network(states)
+
         # predict Q(s',a') from the evaluation network
         prim_qtp1 = primary_network(next_states)
         # copy the prim_qt tensor into the target_q tensor - we then will update one index corresponding to the max action

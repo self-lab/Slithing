@@ -12,8 +12,6 @@ import datetime as dt
 
 print(tf.__version__)
 
-
-
 class prototype():
     def __init__(self):
         pass
@@ -64,8 +62,6 @@ class prototype():
 
         return adj_mat
 
-
-
     def minDistance(self, dist, queue):
         # Initialize min value and min_index as -1
         minimum = np.inf
@@ -98,10 +94,7 @@ class prototype():
                         dist[i] = dist[ind] + adj[ind][i]
                         path[i] = ind
 
-
         return dist, path, queue
-
-
 
     def get_path(self, path, dest):
         slither_path = []
@@ -110,7 +103,6 @@ class prototype():
             slither_path.insert(0,temp)
             temp = path[temp]
         return slither_path
-
 
     def makeSlithpath(self, path, col):
         slith_path = []

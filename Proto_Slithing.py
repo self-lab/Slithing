@@ -1,6 +1,8 @@
 '''
 Created on Sun May 26 16:49:51 2019
 @author: Milan Reichmann
+TO DO Clean up and Reward Function to +10 if slither finds food
+and -100 if slither rips
 '''
 
 #Standard Libraries
@@ -186,6 +188,7 @@ class Slither(slitherHead):
         self.controller = engine
         self.intraining = intraining
         self.score = 0
+        self.has_eaten = False
         self.initSlither()
 
     def returnIndex(self):
@@ -255,6 +258,7 @@ class Slither(slitherHead):
             self.lastkey='L'
 
         self.snakeHead.updateCords(self.x, self.y, self.lastkey)
+        self.has_eaten = False
 
 
     def appendMember(self):
@@ -265,6 +269,7 @@ class Slither(slitherHead):
                                                 tempx, tempy))
         self.mnumb +=1
         self.score +=1
+        self.has_eaten=True
 
     def return_stats(self, val = 'a'):
         if val == 'all':
@@ -275,6 +280,8 @@ class Slither(slitherHead):
             return self.linecolor
         elif val == 'score':
             return self.mnumb
+        elif val == 'has_eaten':
+            return self.has_eaten
         else: print('Invalid Input -> Ignored')
 
 
@@ -329,6 +336,7 @@ class SlitherField(QtWidgets.QMainWindow):
         self.score_label()
         self.timeHandling()
         self.move = 0
+        self.total_moves = 0
         self.gameStatus = 'Alive'
         self.counter = 0
         self.episodes = episodes
@@ -402,10 +410,6 @@ class SlitherField(QtWidgets.QMainWindow):
                                     )
             self.emptySpaces += 3
             self.slithAlive +=1
-
-
-
-
 
     def score_label(self):
         '''This function initialises and formats the score Label. It is
@@ -534,8 +538,8 @@ class SlitherField(QtWidgets.QMainWindow):
         calls the moveSlither function after every tick (self.speed), which is
         specified in the SlitherField.__init__'''
         self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.moveSlither)
-        self.timer.start(self.speed)
+        #self.timer.timeout.connect(self.moveSlither)
+        #self.timer.start(self.speed)
 
     def moveSlither(self):
         '''This function calls all UDF-Function required to moving a Slither,
@@ -725,6 +729,7 @@ class SlitherField(QtWidgets.QMainWindow):
                     collision_list.update(
                       {s : self.mySlithers[s].return_stats('score')}
                     )
+
             collision_max = max(collision_list.values())
             max_counter = 0                                                     #Kill all snakes if max is in list >1
             for k, v in collision_list.items():
@@ -753,9 +758,20 @@ class SlitherField(QtWidgets.QMainWindow):
         tempx, tempy = self.convCords(tempx, tempy)
         if self.slitherField.iloc[tempy, tempx]!=1:
             self.slitherField.iloc[tempy, tempx]=0
-        print(self.slitherField)
+        #print(self.slitherField)
+        self.total_moves += self.move
+        print(f"Episode: {self.counter}, Score: {self.mySlithers[0].score}, 'Moves': {self.move}, avg loss: {self.avg_loss:.3f}, eps: {self.eps:.3f}")
         self.slithAlive -=1
         self.mySlithers[sindex]='dead'
+        self.sE[0].memory.add_sample(
+            (
+            self.previous_state,
+            self.action,
+            -100,                                                               # Penalty for dying
+            self.slitherField.copy()
+            )
+        )
+
 
     def printScore(self):
         ''' This function prints the Score of the Slither in question.
@@ -806,7 +822,6 @@ class SlitherField(QtWidgets.QMainWindow):
             foodList.append([tmpy, tmpx])
         return foodList
 
-
     def init_sNN(self):
         self.sE = []
         for s in self.mySlithers:
@@ -817,43 +832,46 @@ class SlitherField(QtWidgets.QMainWindow):
         self.arg_score = 0
 
     def train_iteration(self):
-        state = self.slitherField
-        action = self.sE[0].choose_action(
-            state,
+        self.previous_state = self.slitherField.copy()
+        self.action = self.sE[0].choose_action(
+            self.slitherField,
             self.sE[0].primary_network,
             self.eps
             )
         self.move += 1
-        self.engine_move(0, action)
+        self.engine_move(0, self.action)
         self.moveSlither()
-        next_state=self.slitherField
+
 
         if self.mySlithers[0] != 'dead':
-            self.arg_score = self.mySlithers[0].score
-        else:
-            pass
+            self.arg_score = self.mySlithers[0].has_eaten * 10
 
-        self.sE[0].memory.add_sample((state,
-          action,
-          self.arg_score,
-          next_state))
+        # print('Current_State:\n', self.previous_state, '\n'*2, self.arg_score, self.mySlithers[0].score, self.action,'\n'*2, 'Next_State:\n', self.slitherField,'\n'*2)
 
-        ###NEED TO DEFINE TRAINING FUNCTION NEXT
+        self.sE[0].memory.add_sample(
+            (
+            self.previous_state,
+            self.action,
+            self.arg_score,
+            self.slitherField.copy()
+            )
+        )
+
+
         loss = self.sE[0].train(self.sE[0].primary_network,
                                 self.sE[0].memory,
                                 self.sE[0].target_network)
-        print(loss)
+        #print(loss)
         self.avg_loss += loss
-        self.eps = self.sE[0].MIN_EPSILON + (self.sE[0].MAX_EPSILON - self.sE[0].MIN_EPSILON) * math.exp(- self.sE[0].LAMBDA * self.counter)
+        self.eps = self.sE[0].MIN_EPSILON + (self.sE[0].MAX_EPSILON - self.sE[0].MIN_EPSILON) * math.exp(- self.sE[0].LAMBDA * self.total_moves)
 
         if self.slithAlive == 0:
             self.avg_loss /= self.move
-            print(f"Episode: {self.counter}, Reward: {self.arg_score}, avg loss: {self.avg_loss:.3f}, eps: {self.eps:.3f}")
+            print(f"Episode: {self.counter}, Reward: {self.mySlithers[0].score}, 'Moves': {self.move}, avg loss: {self.avg_loss:.3f}, eps: {self.eps:.3f}")
             with self.sE[0].train_writer.as_default():
                 tf.summary.scalar('reward', self.move, step=self.counter)
                 tf.summary.scalar('avg loss', self.avg_loss, step=self.counter)
             self.timer.stop()
-
 
     def train(self):
         render = False
@@ -861,9 +879,6 @@ class SlitherField(QtWidgets.QMainWindow):
         steps = 0
         self.timer.timeout.connect(self.train_iteration)
         self.timer.start()
-
-
-
 
 
 if __name__=='__main__':

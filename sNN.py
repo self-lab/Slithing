@@ -30,66 +30,69 @@ class Memory:
         return len(self._samples)
 
 
-
-
 class sNN():
     def __init__(self, slith=0):
-        self.memory = Memory(500000)
+        self.memory = Memory(10000000)
         self.STORE_PATH = 'C:/Users/Milan/Desktop/Coding/Python/Projects/1_Slithing/CheckPoints'
         self.MAX_EPSILON = 1
-        self.MIN_EPSILON = 0
+        self.MIN_EPSILON = 0.001
         self.LAMBDA = 0.0005
         self.GAMMA = 0.95
-        self.BATCH_SIZE = 2
+        self.BATCH_SIZE = 1000
         self.TAU = 0.08
         self.RANDOM_REWARD_STD = 1.0
         self.train_writer = tf.summary.create_file_writer(self.STORE_PATH + f"/DoubleQ_{dt.datetime.now().strftime('%d%m%Y%H%M')}")
         self.state_size = 484
         self.num_actions = 4
         self.slither = slith
+        self.THRESHOLD = 1
+        keras.backend.set_floatx('float64')
 
         self.primary_network = keras.Sequential([
             keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            # keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(self.num_actions)
         ])
 
         self.target_network = keras.Sequential([
             keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-    #        keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(self.num_actions)
         ])
 
         self.primary_network.compile(optimizer=keras.optimizers.Adam(), loss='mse')
 
-
-
+        self.direction = {
+          0: 'up',
+          1: 'down',
+          2: 'left',
+          3: 'right'
+        }
 
     def choose_action(self, state, primary_network, eps):
-        if random.random() < eps:
+        if random.random() < min(eps, self.THRESHOLD):
             return random.randint(0, self.num_actions - 1)
         else:
-            return np.argmax(self.primary_network(state.to_numpy().reshape(1, -1)))
-
-
+            direction = np.argmax(self.primary_network(state.to_numpy().reshape(1, -1)))
+            #print('Network decided to turn: ', self.direction[direction])
+            return direction
 
     def train(self, primary_network, memory, target_network=None):
-        print(memory.num_samples, self.BATCH_SIZE)
-        if memory.num_samples < self.BATCH_SIZE * 3:
+        #print(memory.num_samples, self.BATCH_SIZE)
+        if memory.num_samples < self.BATCH_SIZE * 2:
             return 0
+        # if memory.num_samples == 2000:
+        #     self.THRESHOLD = 0.001
         batch = memory.sample(self.BATCH_SIZE)
-        #states = np.array([val[0] for val in batch])
         states = np.array([item[0].to_numpy().reshape(1,-1)[0] for item in batch])
         actions = np.array([val[1] for val in batch])
         rewards = np.array([val[2] for val in batch])
-        # next_states = np.array([(np.zeros(self.state_size)
-        #                          if val[3] is None else val[3]) for val in batch])
+
 
         next_states = np.array([(np.zeros(self.state_size)
                                  if item[3] is None else item[3].to_numpy().reshape(1,-1)[0]) for item in batch])
-
 
         # predict Q(s,a) given the batch of states
         #print(states.shape)
@@ -115,43 +118,3 @@ class sNN():
             for t, e in zip(target_network.trainable_variables, primary_network.trainable_variables):
                 t.assign(t * (1 - self.TAU) + e * self.TAU)
         return loss
-
-
-    def run_training(self):
-        num_episodes = 500
-        eps = self.MAX_EPSILON
-        render = True
-        self.train_writer = tf.summary.create_file_writer(self.STORE_PATH + f"/DoubleQ_{dt.datetime.now().strftime('%d%m%Y%H%M')}")
-        double_q = True
-        steps = 0
-        for i in range(num_episodes):
-            state = 'changeme'
-            cnt = 0
-            avg_loss = 0
-            while True:
-                action = self.choose_action(state, self.primary_network, eps)
-                next_state, reward, done, info = env.step(action)
-                reward = np.random.normal(1.0, self.RANDOM_REWARD_STD)
-                if done:
-                    next_state = None
-                # store in memory
-                memory.add_sample((state, action, reward, next_state))
-
-                loss = train(self.primary_network, memory, self.target_network if double_q else None)
-                avg_loss += loss
-
-                state = next_state
-
-                # exponentially decay the eps value
-                steps += 1
-                eps = self.MIN_EPSILON + (self.MAX_EPSILON - self.MIN_EPSILON) * math.exp(-self.LAMBDA * steps)
-
-                if done:
-                    avg_loss /= cnt
-                    print(f"Episode: {i}, Reward: {cnt}, avg loss: {avg_loss:.3f}, eps: {eps:.3f}")
-                    with train_writer.as_default():
-                        tf.summary.scalar('reward', cnt, step=i)
-                        tf.summary.scalar('avg loss', avg_loss, step=i)
-                    break
-
-                cnt += 1

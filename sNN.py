@@ -36,8 +36,8 @@ class sNN():
         self.STORE_PATH = 'C:/Users/Milan/Desktop/Coding/Python/Projects/1_Slithing/CheckPoints'
         self.MAX_EPSILON = 1
         self.MIN_EPSILON = 0.001
-        self.LAMBDA = 0.0005
-        self.GAMMA = 0.95
+        self.LAMBDA = 0.00005
+        self.GAMMA = 0.5
         self.BATCH_SIZE = 1000
         self.TAU = 0.08
         self.RANDOM_REWARD_STD = 1.0
@@ -50,17 +50,24 @@ class sNN():
 
         self.primary_network = keras.Sequential([
             keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(self.num_actions)
         ])
 
-        self.target_network = keras.Sequential([
-            keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.num_actions)
-        ])
+        self.target_network = None# keras.Sequential([
+            #keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            #keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            #keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            #keras.layers.Dense(self.num_actions)
+        #])
 
         self.primary_network.compile(optimizer=keras.optimizers.Adam(), loss='mse')
 
@@ -106,7 +113,7 @@ class sNN():
         valid_idxs = np.array(next_states).sum(axis=1) != 0
         batch_idxs = np.arange(self.BATCH_SIZE)
         if target_network is None:
-            updates[valid_idxs] += self.GAMMA * np.amax(prim_qtp1.numpy()[valid_idxs, :], axis=1)
+            updates[valid_idxs] =np.add(updates[valid_idxs], self.GAMMA * np.amax(prim_qtp1.numpy()[valid_idxs, :], axis=1), casting='unsafe')
         else:
             prim_action_tp1 = np.argmax(prim_qtp1.numpy(), axis=1)
             q_from_target = target_network(next_states)

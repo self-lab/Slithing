@@ -748,8 +748,21 @@ class SlitherField(QtWidgets.QMainWindow):
                 self.restart_Game()
 
 
+
     def slither_death(self, sindex):
         print('Slither {} died'.format(sindex))
+        self.arg_score = 0
+        #print(self.previous_state, '\n'*2, self.arg_score, self.action, self.slitherField.copy())
+
+        self.sE[0].memory.add_sample(
+            (
+            self.previous_state,
+            self.action,
+            self.arg_score,                                                     # Penalty for dying
+            self.slitherField.copy()
+            )
+        )
+
         for m in self.mySlithers[sindex].memberList:
             tempx, tempy = m.returnCords()
             tempx, tempy  = self.convCords(tempx, tempy)
@@ -758,19 +771,10 @@ class SlitherField(QtWidgets.QMainWindow):
         tempx, tempy = self.convCords(tempx, tempy)
         if self.slitherField.iloc[tempy, tempx]!=1:
             self.slitherField.iloc[tempy, tempx]=0
-        #print(self.slitherField)
         self.total_moves += self.move
-        print(f"Episode: {self.counter}, Score: {self.mySlithers[0].score}, 'Moves': {self.move}, avg loss: {self.avg_loss:.3f}, eps: {self.eps:.3f}")
+        print(f"Episode: {self.counter}, Score: {self.mySlithers[0].score}, 'Moves': {self.move}, avg loss: {self.avg_loss/self.move:.3f}, eps: {self.eps:.3f}")
         self.slithAlive -=1
         self.mySlithers[sindex]='dead'
-        self.sE[0].memory.add_sample(
-            (
-            self.previous_state,
-            self.action,
-            -100,                                                               # Penalty for dying
-            self.slitherField.copy()
-            )
-        )
 
 
     def printScore(self):
@@ -843,8 +847,11 @@ class SlitherField(QtWidgets.QMainWindow):
         self.moveSlither()
 
 
-        if self.mySlithers[0] != 'dead':
-            self.arg_score = self.mySlithers[0].has_eaten * 10
+        if self.mySlithers[0].has_eaten:
+            self.arg_score = self.mySlithers[0].has_eaten*1
+        else:
+            self.arg_score = 0
+
 
         # print('Current_State:\n', self.previous_state, '\n'*2, self.arg_score, self.mySlithers[0].score, self.action,'\n'*2, 'Next_State:\n', self.slitherField,'\n'*2)
 

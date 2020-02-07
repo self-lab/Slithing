@@ -177,9 +177,13 @@ class Slither(slitherHead):
                  engine  = 'player',                                            #Define whether slither controlled by ai or player
                  intraining = False
                  ):
+        self.start_x = x                                                        # Starting Position after reset
+        self.start_y = y                                                        # Starting Position after reset
         self.x = x
         self.y = y
+        self.initial_mnumb = mnumb                                              # Members to Initialize
         self.mnumb = mnumb
+        self.initial_direction = direction                                      # Initial direction
         self.lastkey = self.direction = direction
         self.slitherSize = slitherSize
         self.indexNumber=indexNumber
@@ -189,6 +193,7 @@ class Slither(slitherHead):
         self.intraining = intraining
         self.score = 0
         self.has_eaten = False
+        self.is_alive = True
         self.initSlither()
 
     def returnIndex(self):
@@ -198,30 +203,65 @@ class Slither(slitherHead):
         '''Any Slither consists of a Head and a few Member objects. These are
         initialised within the boundaries of this function.'''
         self.snakeHead = slitherHead(self.x, self.y, self.direction)
-        if self.direction == 'R':
+        if self.initial_direction == 'R':
             self.memberList=[slitherMember(self.snakeHead,
                             self.x-self.slitherSize, self.y)]
             for i in range(1, self.mnumb):
                 self.memberList.insert(0,slitherMember(self.memberList[0],
                                     self.x-self.slitherSize*(1+i), self.y))
-        elif self.direction =='L':
+        elif self.initial_direction =='L':
             self.memberList=[slitherMember(self.snakeHead,
                             self.x+self.slitherSize, self.y)]
             for i in range(1, self.mnumb):
                 self.memberList.insert(0,slitherMember(self.memberList[0],
                                     self.x+self.slitherSize*(1+i), self.y))
-        elif self.direction =='U':
+        elif self.initial_direction =='U':
             self.memberList=[slitherMember(self.snakeHead,
                             self.x, self.y+self.slitherSize)]
             for i in range(1, self.mnumb):
                 self.memberList.insert(0,slitherMember(self.memberList[0],
                                     self.x, self.y+self.slitherSize*(1+i)))
-        elif self.direction =='D':
+        elif self.initial_direction =='D':
             self.memberList=[slitherMember(self.snakeHead,
                             self.x, self.y-self.slitherSize)]
             for i in range(1, self.mnumb):
                 self.memberList.insert(0,slitherMember(self.memberList[0],
                                     self.x, self.y-self.slitherSize*(1+i)))
+
+    def reset(self):
+        del self.memberList
+        self.memberList = []
+        self.x = self.start_x
+        self.y = self.start_y
+        self.snakeHead.direction = self.initial_direction
+        self.is_alive = True
+        self.mnumb = self.initial_mnumb
+
+        if self.initial_direction == 'R':
+            self.memberList=[slitherMember(self.snakeHead,
+                            self.x-self.slitherSize, self.y)]
+            for i in range(1, self.mnumb):
+                self.memberList.insert(0,slitherMember(self.memberList[0],
+                                    self.x-self.slitherSize*(1+i), self.y))
+        elif self.initial_direction =='L':
+            self.memberList=[slitherMember(self.snakeHead,
+                            self.x+self.slitherSize, self.y)]
+            for i in range(1, self.mnumb):
+                self.memberList.insert(0,slitherMember(self.memberList[0],
+                                    self.x+self.slitherSize*(1+i), self.y))
+        elif self.initial_direction =='U':
+            self.memberList=[slitherMember(self.snakeHead,
+                            self.x, self.y+self.slitherSize)]
+            for i in range(1, self.mnumb):
+                self.memberList.insert(0,slitherMember(self.memberList[0],
+                                    self.x, self.y+self.slitherSize*(1+i)))
+        elif self.initial_direction =='D':
+            self.memberList=[slitherMember(self.snakeHead,
+                            self.x, self.y-self.slitherSize)]
+            for i in range(1, self.mnumb):
+                self.memberList.insert(0,slitherMember(self.memberList[0],
+                                    self.x, self.y-self.slitherSize*(1+i)))
+
 
 
     def returnMemberList(self, c):
@@ -337,7 +377,6 @@ class SlitherField(QtWidgets.QMainWindow):
         self.timeHandling()
         self.move = 0
         self.total_moves = 0
-        self.gameStatus = 'Alive'
         self.counter = 0
         self.episodes = episodes
         self.avg_loss = 0
@@ -438,16 +477,15 @@ class SlitherField(QtWidgets.QMainWindow):
         '''This function is connected to the restart button and reinitialises
         all values to enable a restart.'''
         for slither in self.mySlithers:
-            del slither
+            slither.reset()
 
         self.move = 0
         self.emptySpaces = 0
         self.mylabel.setText('0')
         self.slitherField = pd.DataFrame(np.zeros((int(self.height/self.slitherSize+2),
                                       int(self.length/self.slitherSize+2))))
-        self.mySlither(self.slithAtt)
+        #self.mySlither(self.slithAtt)
         self.timer.start()
-        self.gameStatus = 'Alive'
         self.initSlitherField()
         self.foodInit(self.foodcount)
         self.show()
@@ -503,7 +541,7 @@ class SlitherField(QtWidgets.QMainWindow):
         passed from paintEvent(). This function specifies how to draw the
         slither'''
         for s in range(len(self.mySlithers)):
-            if self.mySlithers[s] != 'dead':
+            if self.mySlithers[s].is_alive:
                 basecol = self.mySlithers[s].return_stats(val = 'basecolor')
                 linecol = self.mySlithers[s].return_stats(val = 'linecolor')
                 painter.setPen(QtGui.QPen(basecol, 0, QtCore.Qt.SolidLine))
@@ -538,15 +576,15 @@ class SlitherField(QtWidgets.QMainWindow):
         calls the moveSlither function after every tick (self.speed), which is
         specified in the SlitherField.__init__'''
         self.timer = QtCore.QTimer()
-        #self.timer.timeout.connect(self.moveSlither)
-        #self.timer.start(self.speed)
+        self.timer.timeout.connect(self.moveSlither)
+        self.timer.start(self.speed)
 
     def moveSlither(self):
         '''This function calls all UDF-Function required to moving a Slither,
         that is (i) moving the SlitherClass, (ii) updating the slitherField -
         Matrix and (iii) repainting'''
         for slither in self.mySlithers:
-            if slither != 'dead' and slither.controller != 'player' and slither.intraining:
+            if slither.is_alive and slither.controller != 'player' and slither.intraining:
                 tmp = slither.returnCords()
                 tx, ty = self.convCords(tmp[1],tmp[0])
                 dir = slither.\
@@ -557,7 +595,7 @@ class SlitherField(QtWidgets.QMainWindow):
                 self.engine_move(slither.returnIndex(), dir)
 
         for slither in self.mySlithers:
-            if slither != 'dead':
+            if slither.is_alive:
                 slither.moveHead()
 
         self.updateSlitherinField()
@@ -565,16 +603,16 @@ class SlitherField(QtWidgets.QMainWindow):
 
     def engine_move(self, sindex, d):
         if d == 0:
-            if self.mySlithers[sindex] != 'dead':
+            if self.mySlithers[sindex].is_alive:
                 self.mySlithers[sindex].turnUp()
         elif d == 1:
-            if self.mySlithers[sindex] != 'dead':
+            if self.mySlithers[sindex].is_alive:
                 self.mySlithers[sindex].turnDown()
         elif d == 2:
-            if self.mySlithers[sindex] != 'dead':
+            if self.mySlithers[sindex].is_alive:
                 self.mySlithers[sindex].turnLeft()
         elif d == 3:
-            if self.mySlithers[sindex] != 'dead':
+            if self.mySlithers[sindex].is_alive:
                 self.mySlithers[sindex].turnRight()
 
     def keyPressEvent(self, e):
@@ -582,28 +620,28 @@ class SlitherField(QtWidgets.QMainWindow):
         respective Slithers'''
 
         if e.key() == QtCore.Qt.Key_W:
-            if self.mySlithers[0] != 'dead':
+            if self.mySlithers[0].is_alive:
                 self.mySlithers[0].turnUp()
         elif e.key() == QtCore.Qt.Key_S:
-            if self.mySlithers[0] != 'dead':
+            if self.mySlithers[0].is_alive:
                 self.mySlithers[0].turnDown()
         elif e.key() == QtCore.Qt.Key_A:
-            if self.mySlithers[0] != 'dead':
+            if self.mySlithers[0].is_alive:
                 self.mySlithers[0].turnLeft()
         elif e.key() == QtCore.Qt.Key_D:
-            if self.mySlithers[0] != 'dead':
+            if self.mySlithers[0].is_alive:
                 self.mySlithers[0].turnRight()
         elif e.key() == QtCore.Qt.Key_I:
-            if self.mySlithers[1] != 'dead':
+            if self.mySlithers[1].is_alive:
                 self.mySlithers[1].turnUp()
         elif e.key() == QtCore.Qt.Key_K:
-            if self.mySlithers[1] != 'dead':
+            if self.mySlithers[1].is_alive:
                 self.mySlithers[1].turnDown()
         elif e.key() == QtCore.Qt.Key_J:
-            if self.mySlithers[1] != 'dead':
+            if self.mySlithers[1].is_alive:
                 self.mySlithers[1].turnLeft()
         elif e.key() == QtCore.Qt.Key_L:
-            if self.mySlithers[1] != 'dead':
+            if self.mySlithers[1].is_alive:
                 self.mySlithers[1].turnRight()
 
     def initSlitherField(self):
@@ -634,11 +672,11 @@ class SlitherField(QtWidgets.QMainWindow):
         ther Movement is handeled by updateSlitherinField, which is a lotfaster
         '''
         for s in range(len(self.mySlithers)):
-            if self.mySlithers[s] != 'dead':
-                tempx, tempy = self.mySlithers[s].returnCords()
-                tempx, tempy = self.convCords(tempx, tempy, type='SF')
-                if self.slitherField.iloc[tempy, tempx] != 1:
-                    self.slitherField.iloc[tempy, tempx] = self.mySlithers[s].indexNumber+4
+#        if self.mySlithers[s].is_alive:
+            tempx, tempy = self.mySlithers[s].returnCords()
+            tempx, tempy = self.convCords(tempx, tempy, type='SF')
+            if self.slitherField.iloc[tempy, tempx] != 1:
+                self.slitherField.iloc[tempy, tempx] = self.mySlithers[s].indexNumber+4
                 for m in self.mySlithers[s].memberRange():
                     tempx, tempy = self.mySlithers[s].memberList[m].returnCords()
                     tempx, tempy = self.convCords(tempx, tempy)
@@ -653,7 +691,7 @@ class SlitherField(QtWidgets.QMainWindow):
 
         #First Member must now be 2 instead of 'H'
         for slither in self.mySlithers:
-            if slither != 'dead':
+            if slither.is_alive:
                 tempx, tempy = slither.\
                     memberList[len(slither.memberList)-1].returnCords()         #The slithers 2nd highest Member, is
                 tempx, tempy = self.convCords(tempx, tempy)                     #the one where the 'H' must be overwritten to 2
@@ -666,7 +704,7 @@ class SlitherField(QtWidgets.QMainWindow):
                     self.slitherField.iloc[tempy, tempx] = float(0)
 
         for slither in self.mySlithers:
-            if slither != 'dead':
+            if slither.is_alive:
                 #Update Head Position
                 tempx, tempy = slither.returnCords()                            #!Take Care, by construction,
                 tempx, tempy = self.convCords(tempx, tempy)                     #the call Slither.returnCords, returns the Heads Position
@@ -724,7 +762,7 @@ class SlitherField(QtWidgets.QMainWindow):
                 sindex:self.mySlithers[sindex].return_stats('score')
                 }
             for s in range(len(self.mySlithers)):
-                if self.mySlithers[s] != 'dead' and s != sindex \
+                if self.mySlithers[s].is_alive and s != sindex \
                     and [tempx, tempy] == list(self.mySlithers[s].returnCords()):
                     collision_list.update(
                       {s : self.mySlithers[s].return_stats('score')}
@@ -753,20 +791,15 @@ class SlitherField(QtWidgets.QMainWindow):
         print('Slither {} died'.format(sindex))
         self.arg_score = -100
 
-        self.sE[0].memory.add_sample(
-            (
-            self.previous_state,
-            self.action,
-            self.arg_score,                                                     # Penalty for dying
-            self.slitherField.copy()
+        if self.training_mode:
+            self.sE[0].memory.add_sample(
+                (
+                self.previous_state,
+                self.action,
+                self.arg_score,                                                     # Penalty for dying
+                self.slitherField.copy()
+                )
             )
-        )
-
-        # print(
-        # self.previous_state, '\n'*2,
-        # self.direction[self.action],
-        # self.arg_score,
-        # self.slitherField, '\n'*2)
 
         for m in self.mySlithers[sindex].memberList:
             tempx, tempy = m.returnCords()
@@ -776,19 +809,23 @@ class SlitherField(QtWidgets.QMainWindow):
         tempx, tempy = self.convCords(tempx, tempy)
         if self.slitherField.iloc[tempy, tempx]!=1:
             self.slitherField.iloc[tempy, tempx]=0
-        self.total_moves += self.move
-        print(f"Episode: {self.counter}, Score: {self.mySlithers[0].score}, 'Moves': {self.move}, avg loss: {self.avg_loss/self.move:.3f}, eps: {self.eps:.3f}")
+        self.mySlithers[sindex].is_alive = False
         self.slithAlive -=1
-        self.mySlithers[sindex]='dead'
+        self.total_moves += self.move
+
+        if self.training_mode:
+            print(f"Episode: {self.counter}, Score: {self.mySlithers[0].score}, 'Moves': {self.move}, avg loss: {self.avg_loss/self.move:.3f}, eps: {self.eps:.3f}")
+
+
 
 
     def printScore(self):
         ''' This function prints the Score of the Slither in question.
         We still need to update '''
-        if self.mySlithers[0] != 'dead':
+        if self.mySlithers[0].is_alive:
             self.myScore = self.mySlithers[0].memberList[0].returnPosition()-2
             self.mylabel.setText(str(self.myScore))
-        if len(self.mySlithers)>1 and self.mySlithers[1]!='dead':               #If a 2nd Slither exists,
+        if len(self.mySlithers)>1 and self.mySlithers[1].is_alive:               #If a 2nd Slither exists,
             self.myScore2 = self.mySlithers[1].memberList[0].returnPosition()-2 #it's score is set to 0
             self.mylabel2.setText(str(self.myScore2))
 
@@ -935,8 +972,8 @@ if __name__=='__main__':
 
     snake = SlitherField(slither_count = 1,
                          slith_att     = slithers,
-                         episodes      = 100000,
-                         training_mode = True,
+                         episodes      = 1,
+                         training_mode = False,
                          arena_width   = 10,
                          arena_height  = 10,
                          food_count    = 10)

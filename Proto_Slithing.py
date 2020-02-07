@@ -751,8 +751,7 @@ class SlitherField(QtWidgets.QMainWindow):
 
     def slither_death(self, sindex):
         print('Slither {} died'.format(sindex))
-        self.arg_score = 0
-        #print(self.previous_state, '\n'*2, self.arg_score, self.action, self.slitherField.copy())
+        self.arg_score = -100
 
         self.sE[0].memory.add_sample(
             (
@@ -762,6 +761,12 @@ class SlitherField(QtWidgets.QMainWindow):
             self.slitherField.copy()
             )
         )
+
+        # print(
+        # self.previous_state, '\n'*2,
+        # self.direction[self.action],
+        # self.arg_score,
+        # self.slitherField, '\n'*2)
 
         for m in self.mySlithers[sindex].memberList:
             tempx, tempy = m.returnCords()
@@ -850,10 +855,9 @@ class SlitherField(QtWidgets.QMainWindow):
         if self.mySlithers[0].has_eaten:
             self.arg_score = self.mySlithers[0].has_eaten*1
         else:
-            self.arg_score = 0
+            self.arg_score = 1
 
 
-        # print('Current_State:\n', self.previous_state, '\n'*2, self.arg_score, self.mySlithers[0].score, self.action,'\n'*2, 'Next_State:\n', self.slitherField,'\n'*2)
 
         self.sE[0].memory.add_sample(
             (
@@ -865,9 +869,24 @@ class SlitherField(QtWidgets.QMainWindow):
         )
 
 
+        self.direction = {
+          0: 'up',
+          1: 'down',
+          2: 'left',
+          3: 'right'
+        }
+
+        # print(
+        # self.previous_state, '\n'*2,
+        # self.direction[self.action],
+        # self.arg_score,
+        # self.slitherField, '\n'*2)
+
         loss = self.sE[0].train(self.sE[0].primary_network,
                                 self.sE[0].memory,
-                                self.sE[0].target_network)
+                                # self.sE[0].target_network
+                                )
+        #time.sleep(2)
         #print(loss)
         self.avg_loss += loss
         self.eps = self.sE[0].MIN_EPSILON + (self.sE[0].MAX_EPSILON - self.sE[0].MIN_EPSILON) * math.exp(- self.sE[0].LAMBDA * self.total_moves)
@@ -895,7 +914,7 @@ if __name__=='__main__':
     else:
         print('QApplication instance already exists: %s' % str(app))
 
-    s1 = [10,10,
+    s1 = [5,5,
           2,
           qorange,
           qgrey,
@@ -917,5 +936,8 @@ if __name__=='__main__':
     snake = SlitherField(slither_count = 1,
                          slith_att     = slithers,
                          episodes      = 100000,
-                         training_mode = True)
+                         training_mode = True,
+                         arena_width   = 10,
+                         arena_height  = 10,
+                         food_count    = 10)
     app.exec_()

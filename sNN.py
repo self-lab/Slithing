@@ -36,9 +36,9 @@ class sNN():
         self.STORE_PATH = 'C:/Users/Milan/Desktop/Coding/Python/Projects/1_Slithing/CheckPoints'
         self.MAX_EPSILON = 1
         self.MIN_EPSILON = 0.001
-        self.LAMBDA = 0.00005
-        self.GAMMA = 0.5
-        self.BATCH_SIZE = 1000
+        self.LAMBDA = 0.005
+        self.GAMMA = 0.7
+        self.BATCH_SIZE = 5000
         self.TAU = 0.08
         self.RANDOM_REWARD_STD = 1.0
         self.train_writer = tf.summary.create_file_writer(self.STORE_PATH + f"/DoubleQ_{dt.datetime.now().strftime('%d%m%Y%H%M')}")
@@ -49,16 +49,16 @@ class sNN():
         keras.backend.set_floatx('float64')
 
         self.primary_network = keras.Sequential([
-            keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #    keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(self.num_actions)
         ])
 
@@ -88,8 +88,12 @@ class sNN():
 
     def train(self, primary_network, memory, target_network=None):
         #print(memory.num_samples, self.BATCH_SIZE)
-        if memory.num_samples < self.BATCH_SIZE * 2:
+        if memory.num_samples < self.BATCH_SIZE * 1:
             return 0
+        # if memory.num_samples==self.BATCH_SIZE * 2:
+        #     pd.DataFrame(memory.sample(self.BATCH_SIZE)).to_excel('whatev.xlsx')
+
+
         # if memory.num_samples == 2000:
         #     self.THRESHOLD = 0.001
         batch = memory.sample(self.BATCH_SIZE)

@@ -42,23 +42,23 @@ class sNN():
         self.TAU = 0.08
         self.RANDOM_REWARD_STD = 1.0
         self.train_writer = tf.summary.create_file_writer(self.STORE_PATH + f"/DoubleQ_{dt.datetime.now().strftime('%d%m%Y%H%M')}")
-        self.state_size = 484
+        self.state_size = 144
         self.num_actions = 4
         self.slither = slith
         self.THRESHOLD = 1
         keras.backend.set_floatx('float64')
 
         self.primary_network = keras.Sequential([
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(121, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(self.num_actions)
         ])
 
@@ -83,19 +83,11 @@ class sNN():
             return random.randint(0, self.num_actions - 1)
         else:
             direction = np.argmax(self.primary_network(state.to_numpy().reshape(1, -1)))
-            #print('Network decided to turn: ', self.direction[direction])
             return direction
 
     def train(self, primary_network, memory, target_network=None):
-        #print(memory.num_samples, self.BATCH_SIZE)
         if memory.num_samples < self.BATCH_SIZE * 1:
             return 0
-        # if memory.num_samples==self.BATCH_SIZE * 2:
-        #     pd.DataFrame(memory.sample(self.BATCH_SIZE)).to_excel('whatev.xlsx')
-
-
-        # if memory.num_samples == 2000:
-        #     self.THRESHOLD = 0.001
         batch = memory.sample(self.BATCH_SIZE)
         states = np.array([item[0].to_numpy().reshape(1,-1)[0] for item in batch])
         actions = np.array([val[1] for val in batch])
@@ -111,6 +103,7 @@ class sNN():
 
         # predict Q(s',a') from the evaluation network
         prim_qtp1 = primary_network(next_states)
+
         # copy the prim_qt tensor into the target_q tensor - we then will update one index corresponding to the max action
         target_q = prim_qt.numpy()
         updates = rewards

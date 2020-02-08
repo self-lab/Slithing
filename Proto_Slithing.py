@@ -241,8 +241,6 @@ class Slither(slitherHead):
         print(self.memberList[0].Pos)
         del self.memberList[:-self.mnumb]
 
-        print('memberLen  ', len(self.memberList))
-
         if self.direction =='R':
             for member in self.memberList:
                 print(member.Pos)
@@ -337,17 +335,17 @@ class SlitherField(QtWidgets.QMainWindow):
                  episodes      = 100,
                  ):
         super(SlitherField, self).__init__()
-        self.viewTable = 'off'                                                  #on or off
+        self.viewTable = 'off'                                                  # on or off
         self.setWindowTitle('Slithers')
-        self.arenaSize={'width':  arena_width,                                  #Arena Width  - Tiles
-                        'height': arena_height}                                 #Arena Height - Tiles
+        self.arenaSize={'width':  arena_width,                                  # Arena Width  - Tiles
+                        'height': arena_height}                                 # Arena Height - Tiles
         self.slitherSize = tile_size
         self.setGeometry(50, 50,
                          self.arenaSize['width']*self.slitherSize + 100,
                          self.arenaSize['height']*self.slitherSize + 100)
-        self.margins={'upper':50, 'left':50 ,                                   #Treat as constants
+        self.margins={'upper':50, 'left':50 ,                                   # Treat as constants
                       'right':self.arenaSize['width']*self.slitherSize   +50,
-                      'bottom':self.arenaSize['height']*self.slitherSize +50}   #x,y topLeft x,y bottomright
+                      'bottom':self.arenaSize['height']*self.slitherSize +50}   # x,y topLeft x,y bottomright
         self.slithCount = slither_count
         self.foodcount  = food_count
         self.emptySpaces = 0
@@ -498,9 +496,9 @@ class SlitherField(QtWidgets.QMainWindow):
             tmpx = roll %  self.arenaSize['height'] + 1
         self.slitherField.iloc[tmpy, tmpx] = 3
         tmpx, tmpy = self.convCords(tmpx, tmpy, type='QT')
-        if type == 'init':                                                      #Called when first initialising Food
+        if type == 'init':                                                      # Called when first initialising Food
             return Food(tmpx, tmpy)
-        elif type == 'realloc':                                                 #Called when changing the coordinates of food
+        elif type == 'realloc':                                                 # Called when changing the coordinates of food
             return tmpx, tmpy
 
     def paintEvent(self, event):
@@ -538,8 +536,8 @@ class SlitherField(QtWidgets.QMainWindow):
                 painter.drawEllipse(self.mySlithers[s].returnPosx(),
                 self.mySlithers[s].returnPosy(), self.slitherSize, self.slitherSize)
                 for m in self.mySlithers[s].memberRange():
-                    painter.drawRect(self.mySlithers[s].memberList[m].returnPosx(), #We are accessing the Memberlist containing
-                                     self.mySlithers[s].memberList[m].returnPosy(), #the Member Objects 'm' of Slither 's'
+                    painter.drawRect(self.mySlithers[s].memberList[m].returnPosx(), # We are accessing the Memberlist containing
+                                     self.mySlithers[s].memberList[m].returnPosy(), # the Member Objects 'm' of Slither 's'
                                      self.slitherSize, self.slitherSize)
 
     def drawArena(self, painter):
@@ -550,9 +548,9 @@ class SlitherField(QtWidgets.QMainWindow):
 
         painter.setPen(QtGui.QPen(qgrey, 3, QtCore.Qt.SolidLine))
 
-        painter.drawLine(self.margins['upper'], self.margins['left'],           #Left Line
+        painter.drawLine(self.margins['upper'], self.margins['left'],           # Left Line
                          self.margins['left'], self.margins['bottom'])
-        painter.drawLine(self.margins['upper'], self.margins['bottom'],         #Right Line
+        painter.drawLine(self.margins['upper'], self.margins['bottom'],         # Right Line
                          self.margins['right'], self.margins['bottom'])
 
         painter.drawLine(self.margins['upper'], self.margins['left'],
@@ -646,7 +644,7 @@ class SlitherField(QtWidgets.QMainWindow):
         #Setting the 'Bounds of the SlitherField
         self.slitherField.iloc[[0, fieldheight-1],:] = 1
         self.slitherField.iloc[:,[0,fieldwidth-1]] = 1
-        self.slitherInField()                                                   #Updates all the Slither Coords in the SlitherField
+        self.slitherInField()                                                   # Updates all the Slither Coords in the SlitherField
 
         #Create Viewer
         if self.viewTable == 'on':
@@ -682,21 +680,21 @@ class SlitherField(QtWidgets.QMainWindow):
         for slither in self.mySlithers:
             if slither.is_alive:
                 tempx, tempy = slither.\
-                    memberList[len(slither.memberList)-1].returnCords()         #The slithers 2nd highest Member, is
-                tempx, tempy = self.convCords(tempx, tempy)                     #the one where the 'H' must be overwritten to 2
+                    memberList[len(slither.memberList)-1].returnCords()         # The slithers 2nd highest Member, is
+                tempx, tempy = self.convCords(tempx, tempy)                     # the one where the 'H' must be overwritten to 2
                 self.slitherField.iloc[tempy, tempx] = 2
 
                 #Last Member must now be '0' instead of 'H'
                 tempx, tempy = slither.memberList[0].returnLastPos()
-                if tempx:                                                       #Hypothetically tempx does not exist,
-                    tempx, tempy = self.convCords(tempx, tempy)                 #whenevever we are looking at the first frame
+                if tempx:                                                       # Hypothetically tempx does not exist,
+                    tempx, tempy = self.convCords(tempx, tempy)                 # whenevever we are looking at the first frame
                     self.slitherField.iloc[tempy, tempx] = float(0)
 
         for slither in self.mySlithers:
             if slither.is_alive:
                 #Update Head Position
-                tempx, tempy = slither.returnCords()                            #!Take Care, by construction,
-                tempx, tempy = self.convCords(tempx, tempy)                     #the call Slither.returnCords, returns the Heads Position
+                tempx, tempy = slither.returnCords()                            # !Take Care, by construction,
+                tempx, tempy = self.convCords(tempx, tempy)                     # the call Slither.returnCords, returns the Heads Position
                 #before overwriting, check if the head leads to the termination
                 self.slitherStatus(tempx, tempy, slither.indexNumber)
                 if self.slitherField.iloc[tempy, tempx] != 1:
@@ -743,11 +741,11 @@ class SlitherField(QtWidgets.QMainWindow):
             self.slither_death(sindex)
         elif self.slitherField.iloc[tempy, tempx] == 2:
             self.slither_death(sindex)
-        elif self.slitherField.iloc[tempy, tempx] in range(4,20):               #Maximum Number of SLither allowed
+        elif self.slitherField.iloc[tempy, tempx] in range(4,20):               # Maximum Number of SLither allowed
             # If we have a collision with the head, the longer snake survives,
             # or both die
             tempx, tempy = self.mySlithers[sindex].returnCords()
-            collision_list = {                                                  #Dictionary with slitherindex and score
+            collision_list = {                                                  # Dictionary with slitherindex and score
                 sindex:self.mySlithers[sindex].return_stats('score')
                 }
             for s in range(len(self.mySlithers)):
@@ -758,11 +756,11 @@ class SlitherField(QtWidgets.QMainWindow):
                     )
 
             collision_max = max(collision_list.values())
-            max_counter = 0                                                     #Kill all snakes if max is in list >1
+            max_counter = 0                                                     # Kill all snakes if max is in list >1
             for k, v in collision_list.items():
                 if v == collision_max:
                     max_counter += 1
-            if max_counter >=2:                                                 #If 2+ snakes have max size, all snakes will die
+            if max_counter >=2:                                                 # If 2+ snakes have max size, all snakes will die
                 collision_max += 1
             for k, v in collision_list.items():
                 if v < collision_max:
@@ -814,8 +812,8 @@ class SlitherField(QtWidgets.QMainWindow):
         if self.mySlithers[0].is_alive:
             self.myScore = self.mySlithers[0].memberList[0].returnPosition()-2
             self.mylabel.setText(str(self.myScore))
-        if len(self.mySlithers)>1 and self.mySlithers[1].is_alive:               #If a 2nd Slither exists,
-            self.myScore2 = self.mySlithers[1].memberList[0].returnPosition()-2 #it's score is set to 0
+        if len(self.mySlithers)>1 and self.mySlithers[1].is_alive:              # If a 2nd Slither exists,
+            self.myScore2 = self.mySlithers[1].memberList[0].returnPosition()-2 # it's score is set to 0
             self.mylabel2.setText(str(self.myScore2))
 
     def placenewFood(self, i):
@@ -938,7 +936,7 @@ if __name__=='__main__':
           qorange,
           qgrey,
           'R',
-          'player',
+          engine.prototype(),
           True]
 
     s2 = [6,12,

@@ -8,6 +8,7 @@ from random import randrange
 import random
 import math
 import datetime as dt
+import sNN as sai
 
 
 print(tf.__version__)
@@ -132,3 +133,59 @@ class prototype():
             return 2                                                            #Left
         else:
             pass
+
+    def train_iteration(self, Field, has_eaten):
+        self.previous_state = Field.copy()
+        self.action = self.sE[0].choose_action(
+            Field,
+            self.sE[0].primary_network,
+            self.eps
+            )
+        self.move += 1
+        self.engine_move(0, self.action)
+        self.moveSlither()
+
+        if has_eaten:
+            self.arg_score = has_eaten
+        else:
+            self.arg_score = 0
+
+        self.sE[0].memory.add_sample(
+            (
+            self.previous_state,
+            self.action,
+            self.arg_score,
+            self.slitherField.copy()
+            )
+        )
+
+
+        self.direction = {
+          0: 'up',
+          1: 'down',
+          2: 'left',
+          3: 'right'
+        }
+
+        loss = self.sE[0].train(self.sE[0].primary_network,
+                                self.sE[0].memory,
+                                # self.sE[0].target_network
+                                )
+
+        self.avg_loss += loss
+        self.eps = self.sE[0].MIN_EPSILON + (self.sE[0].MAX_EPSILON - self.sE[0].MIN_EPSILON) * math.exp(- self.sE[0].LAMBDA * self.total_moves)
+
+        if self.slithAlive == 0:
+            self.avg_loss /= self.move
+            print(f"Episode: {self.counter}, Reward: {self.mySlithers[0].score}, 'Moves': {self.move}, avg loss: {self.avg_loss:.3f}, eps: {self.eps:.3f}")
+            with self.sE[0].train_writer.as_default():
+                tf.summary.scalar('reward', self.move, step=self.counter)
+                tf.summary.scalar('avg loss', self.avg_loss, step=self.counter)
+            self.timer.stop()
+
+    def train(self):
+        render = False
+        double_q = True
+        steps = 0
+        self.timer.timeout.connect(self.train_iteration)
+        self.timer.start()

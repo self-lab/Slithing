@@ -464,6 +464,7 @@ class SlitherField(QtWidgets.QMainWindow):
         all values to enable a restart.'''
         for slither in self.mySlithers:
             slither.reset()
+            self.slithAlive += 1
 
         self.move = 0
         self.emptySpaces = 0

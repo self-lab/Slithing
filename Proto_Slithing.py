@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from math import floor
 import time
-import tensorflow as tf
+#import tensorflow as tf
 
 #Third Party Libraries - Professional
 from PyQt5 import QtGui, QtWidgets, QtCore                                      #API für GuI, Widgets
@@ -196,32 +196,33 @@ class Slither(slitherHead):
         self.is_alive = True
         self.initSlither()
 
-    def returnIndex(self):
+    def returnIndex(self, reset = False):
         return self.indexNumber
 
     def initSlither(self):
         '''Any Slither consists of a Head and a few Member objects. These are
         initialised within the boundaries of this function.'''
+
         self.snakeHead = slitherHead(self.x, self.y, self.direction)
-        if self.initial_direction == 'R':
+        if self.direction == 'R':
             self.memberList=[slitherMember(self.snakeHead,
                             self.x-self.slitherSize, self.y)]
             for i in range(1, self.mnumb):
                 self.memberList.insert(0,slitherMember(self.memberList[0],
                                     self.x-self.slitherSize*(1+i), self.y))
-        elif self.initial_direction =='L':
+        elif self.direction =='L':
             self.memberList=[slitherMember(self.snakeHead,
                             self.x+self.slitherSize, self.y)]
             for i in range(1, self.mnumb):
                 self.memberList.insert(0,slitherMember(self.memberList[0],
                                     self.x+self.slitherSize*(1+i), self.y))
-        elif self.initial_direction =='U':
+        elif self.direction =='U':
             self.memberList=[slitherMember(self.snakeHead,
                             self.x, self.y+self.slitherSize)]
             for i in range(1, self.mnumb):
                 self.memberList.insert(0,slitherMember(self.memberList[0],
                                     self.x, self.y+self.slitherSize*(1+i)))
-        elif self.initial_direction =='D':
+        elif self.direction =='D':
             self.memberList=[slitherMember(self.snakeHead,
                             self.x, self.y-self.slitherSize)]
             for i in range(1, self.mnumb):
@@ -229,39 +230,24 @@ class Slither(slitherHead):
                                     self.x, self.y-self.slitherSize*(1+i)))
 
     def reset(self):
-        del self.memberList
-        self.memberList = []
         self.x = self.start_x
         self.y = self.start_y
-        self.snakeHead.direction = self.initial_direction
-        self.is_alive = True
         self.mnumb = self.initial_mnumb
+        self.direction = self.initial_direction
+        self.snakeHead.direction = self.initial_direction
+        self.snakeHead.x = self.x
+        self.snakeHead.y = self.y
+        self.is_alive = True
+        print(self.memberList[0].Pos)
+        del self.memberList[:-self.mnumb]
 
-        if self.initial_direction == 'R':
-            self.memberList=[slitherMember(self.snakeHead,
-                            self.x-self.slitherSize, self.y)]
-            for i in range(1, self.mnumb):
-                self.memberList.insert(0,slitherMember(self.memberList[0],
-                                    self.x-self.slitherSize*(1+i), self.y))
-        elif self.initial_direction =='L':
-            self.memberList=[slitherMember(self.snakeHead,
-                            self.x+self.slitherSize, self.y)]
-            for i in range(1, self.mnumb):
-                self.memberList.insert(0,slitherMember(self.memberList[0],
-                                    self.x+self.slitherSize*(1+i), self.y))
-        elif self.initial_direction =='U':
-            self.memberList=[slitherMember(self.snakeHead,
-                            self.x, self.y+self.slitherSize)]
-            for i in range(1, self.mnumb):
-                self.memberList.insert(0,slitherMember(self.memberList[0],
-                                    self.x, self.y+self.slitherSize*(1+i)))
-        elif self.initial_direction =='D':
-            self.memberList=[slitherMember(self.snakeHead,
-                            self.x, self.y-self.slitherSize)]
-            for i in range(1, self.mnumb):
-                self.memberList.insert(0,slitherMember(self.memberList[0],
-                                    self.x, self.y-self.slitherSize*(1+i)))
+        print('memberLen  ', len(self.memberList))
 
+        if self.direction =='R':
+            for member in self.memberList:
+                print(member.Pos)
+                member.x = self.x - member.Pos*self.slitherSize
+                member.y = self.y
 
 
     def returnMemberList(self, c):
@@ -484,8 +470,10 @@ class SlitherField(QtWidgets.QMainWindow):
         self.mylabel.setText('0')
         self.slitherField = pd.DataFrame(np.zeros((int(self.height/self.slitherSize+2),
                                       int(self.length/self.slitherSize+2))))
-        #self.mySlither(self.slithAtt)
-        self.timer.start()
+
+        self.timeHandling()
+        #self.timer.start(self.speed)
+        print('timer started?')
         self.initSlitherField()
         self.foodInit(self.foodcount)
         self.show()
@@ -796,7 +784,7 @@ class SlitherField(QtWidgets.QMainWindow):
                 (
                 self.previous_state,
                 self.action,
-                self.arg_score,                                                     # Penalty for dying
+                self.arg_score,                                                 # Penalty for dying
                 self.slitherField.copy()
                 )
             )
@@ -913,18 +901,11 @@ class SlitherField(QtWidgets.QMainWindow):
           3: 'right'
         }
 
-        # print(
-        # self.previous_state, '\n'*2,
-        # self.direction[self.action],
-        # self.arg_score,
-        # self.slitherField, '\n'*2)
-
         loss = self.sE[0].train(self.sE[0].primary_network,
                                 self.sE[0].memory,
                                 # self.sE[0].target_network
                                 )
-        #time.sleep(2)
-        #print(loss)
+
         self.avg_loss += loss
         self.eps = self.sE[0].MIN_EPSILON + (self.sE[0].MAX_EPSILON - self.sE[0].MIN_EPSILON) * math.exp(- self.sE[0].LAMBDA * self.total_moves)
 

@@ -606,11 +606,11 @@ class SlitherField(QtWidgets.QMainWindow):
                     1 if slither.has_eaten else 0,
                     self.slitherField.copy(),
                     slither.is_alive,
-                    slither.score
+                    slither.score,
+                    slither.direction
                     )
-
-
         self.repaint()
+
 
     def engine_move(self, sindex, d):
         if d == 0:
@@ -811,7 +811,8 @@ class SlitherField(QtWidgets.QMainWindow):
                     self.arg_score,
                     self.slitherField.copy(),
                     self.mySlithers[sindex].is_alive,
-                    self.mySlithers[sindex].score
+                    self.mySlithers[sindex].score,
+                    self.mySlithers[sindex].direction
                 )
 
         for m in self.mySlithers[sindex].memberList:

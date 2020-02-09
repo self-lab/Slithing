@@ -43,15 +43,15 @@ class sNN():
         self.RANDOM_REWARD_STD = 1.0
         self.train_writer = tf.summary.create_file_writer(self.STORE_PATH + f"/DoubleQ_{dt.datetime.now().strftime('%d%m%Y%H%M')}")
         self.state_size = 49
-        self.num_actions = 4
+        self.num_actions = 3
         self.slither = slith                                                    # Can probly remove soon
         self.THRESHOLD = 1
         keras.backend.set_floatx('float64')
 
         self.primary_network = keras.Sequential([
             keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
@@ -79,13 +79,6 @@ class sNN():
           3: 'right'
         }
 
-    def choose_action(self, state, primary_network, eps):
-        if random.random() < min(eps, self.THRESHOLD):
-            return random.randint(0, self.num_actions - 1)
-        else:
-            direction = np.argmax(self.primary_network(state.to_numpy().reshape(1, -1)))
-            return direction
-
     def train(self, primary_network, memory, target_network=None):
         if memory.num_samples < self.BATCH_SIZE * 2:
             return 0
@@ -94,11 +87,11 @@ class sNN():
         actions = np.array([val[1] for val in batch])
         rewards = np.array([val[2] for val in batch])
 
+#        if memory.num_samples == self.BATCH_SIZE * 2 +1:
+        pd.DataFrame(batch).to_excel('debugging.xlsx')
 
         next_states = np.array([(np.zeros(self.state_size)
                                  if item[3] is None else item[3].to_numpy().reshape(1,-1)[0]) for item in batch])
-
-        primary_network.summary()
 
         # predict Q(s,a) given the batch of states
         #print(states.shape)

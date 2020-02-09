@@ -588,10 +588,14 @@ class SlitherField(QtWidgets.QMainWindow):
                                               self.makeFoodList())
                 self.engine_move(slither.returnIndex(), dir)
             if slither.is_alive and slither.controller != 'player' and slither.intraining:
-                slither.action = slither.controller.neural_network.choose_action(
+                x, y = self.convCords(slither.y, slither.x)
+                slither.action = slither.controller.choose_action(
                     self.slitherField,
                     slither.controller.neural_network.primary_network,
-                    slither.controller.eps
+                    slither.controller.eps,
+                    [x,y],
+                    3,
+                    slither.direction
                 )
                 self.engine_move(slither.indexNumber, slither.action)
 

@@ -38,6 +38,46 @@ class prototype():
           'R': 3,
         }
 
+        self.dir_up = {
+            0 : 0,
+            1 : 1,
+            2 : 2
+        }
+
+        self.dir_down = {
+            0 : 1,
+            1 : 3,
+            2 : 2
+        }
+
+        self.dir_left = {
+            0 : 2,
+            1 : 0,
+            2 : 1
+        }
+
+        self.dir_right = {
+            0 : 1,
+            1 : 0,
+            2 : 1
+        }
+
+    def convert_direction(self, direction, input):
+
+        if direction in self.direction_mapping.keys():
+            direction = self.direction_mapping[direction]
+
+        if direction == 0:
+            return input
+        if direction == 1:
+            return self.dir_down[input]
+        if direction == 2:
+            return self.dir_left[input]
+        if direction == 3:
+            return self.dir_right[input]
+
+
+
 
     def set_action(self, Field, Head, Food):
         tmpA = self.create_adjmatrix(np.array(Field))
@@ -161,14 +201,16 @@ class prototype():
 
     def train_slither(self, state, action, reward, next_state,
                       slith_alive, slith_score, slith_direction, hx, hy):
+
         self.move += 1
         direction = self.direction_mapping[slith_direction]
         state = self.myview(state, [hx,hy], 3, slith_direction)
         next_state = self.myview(next_state, [hx,hy], 3, slith_direction)
+        slith_normalized_direction = self.convert_direction(slith_direction, action)
         self.neural_network.memory.add_sample(
             (
             state,
-            action,
+            slith_normalized_direction,
             reward,
             next_state
             )
@@ -185,8 +227,6 @@ class prototype():
             + (self.neural_network.MAX_EPSILON
             - self.neural_network.MIN_EPSILON)\
             * math.exp(- self.neural_network.LAMBDA * self.total_moves)
-
-        # print('Loss: ', self.loss, '  Reward: ', reward)
 
         if not slith_alive:
             self.print_status(slith_score)
@@ -219,7 +259,6 @@ class prototype():
         else:
             y_offset = None
 
-        #print('x_offset: ', x_offset,'y_offset: ', y_offset)
 
         tmp = pd.DataFrame(np.ones((2*rad+1,2*rad+1)))
 
@@ -229,13 +268,23 @@ class prototype():
                 : y_offset if (y_offset is not None and y_offset < 0) else None]\
                 = field.iloc[xlbound:xubound, ylbound:yubound].values
 
-        if direction == 0:
+        if self.direction_mapping[direction] == 0:
             pass
-        if direction == 1:
+        if self.direction_mapping[direction] == 1:
             tmp = np.rot90(tmp,2)
-        if direction == 2:
+        if self.direction_mapping[direction] == 2:
             tmp = np.rot90(tmp,3)
-        if direction == 3:
+        if self.direction_mapping[direction] == 3:
             tmp = np.rot90(tmp,1)
 
         return pd.DataFrame(tmp)
+
+    def choose_action(self, state, primary_network, eps, pos, rad, direction):
+        if random.random() < min(eps, self.neural_network.THRESHOLD):
+            return random.randint(0, self.neural_network.num_actions - 1)
+        else:
+            state = self.myview(state.copy(), pos, rad, direction)
+            tmp =  self.convert_direction(direction,
+                np.argmax(primary_network(state.to_numpy().reshape(1, -1))))
+            print(tmp)
+            return tmp

@@ -603,7 +603,7 @@ class SlitherField(QtWidgets.QMainWindow):
                     slither.controller.train_slither(
                     self.previous_state.copy(),
                     slither.action,
-                    5 if slither.has_eaten else 1,
+                    1 if slither.has_eaten else 0,
                     self.slitherField.copy(),
                     slither.is_alive,
                     slither.score

@@ -50,7 +50,7 @@ class sNN():
 
         self.primary_network = keras.Sequential([
             keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),

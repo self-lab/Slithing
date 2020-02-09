@@ -177,6 +177,8 @@ class prototype():
             - self.neural_network.MIN_EPSILON)\
             * math.exp(- self.neural_network.LAMBDA * self.total_moves)
 
+        # print('Loss: ', self.loss, '  Reward: ', reward)
+
         if not slith_alive:
             self.print_status(slith_score)
 

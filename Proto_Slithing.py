@@ -191,6 +191,7 @@ class Slither(slitherHead):
         self.linecolor  = linecol
         self.controller = engine
         self.intraining = intraining
+        self.action = None
         self.score = 0
         self.has_eaten = False
         self.is_alive = True
@@ -238,12 +239,11 @@ class Slither(slitherHead):
         self.snakeHead.x = self.x
         self.snakeHead.y = self.y
         self.is_alive = True
-        print(self.memberList[0].Pos)
+        self.score = 0
         del self.memberList[:-self.mnumb]
 
         if self.direction =='R':
             for member in self.memberList:
-                print(member.Pos)
                 member.x = self.x - member.Pos*self.slitherSize
                 member.y = self.y
 
@@ -351,7 +351,7 @@ class SlitherField(QtWidgets.QMainWindow):
         self.emptySpaces = 0
         self.slithAtt    = slith_att
         self.mySlither(self.slithAtt)
-        self.init_sNN()
+        #self.init_sNN()
         #self.mySlither(self.slithCount)
         self.height  = abs(self.margins['upper'] - self.margins['bottom'])
         self.length  = abs(self.margins['right'] - self.margins['left'])
@@ -359,7 +359,7 @@ class SlitherField(QtWidgets.QMainWindow):
         self.training_mode = training_mode
         self.score_label()
         self.timeHandling()
-        self.move = 0
+        self.move = 1
         self.total_moves = 0
         self.counter = 0
         self.episodes = episodes
@@ -464,15 +464,14 @@ class SlitherField(QtWidgets.QMainWindow):
             slither.reset()
             self.slithAlive += 1
 
-        self.move = 0
+        self.move = 1
         self.emptySpaces = 0
         self.mylabel.setText('0')
         self.slitherField = pd.DataFrame(np.zeros((int(self.height/self.slitherSize+2),
                                       int(self.length/self.slitherSize+2))))
 
-        self.timeHandling()
-        #self.timer.start(self.speed)
-        print('timer started?')
+
+        self.timer.start()
         self.initSlitherField()
         self.foodInit(self.foodcount)
         self.show()
@@ -563,29 +562,54 @@ class SlitherField(QtWidgets.QMainWindow):
         calls the moveSlither function after every tick (self.speed), which is
         specified in the SlitherField.__init__'''
         self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.moveSlither)
-        self.timer.start(self.speed)
+        if not self.training_mode:
+            self.timer.timeout.connect(self.moveSlither)
+            self.timer.start(self.speed)
 
     def moveSlither(self):
         '''This function calls all UDF-Function required to moving a Slither,
         that is (i) moving the SlitherClass, (ii) updating the slitherField -
         Matrix and (iii) repainting'''
+
+        if self.training_mode:
+            self.previous_state = self.slitherField.copy()
+
         for slither in self.mySlithers:
-            if slither.is_alive and slither.controller != 'player' and slither.intraining:
+            if slither.is_alive and slither.controller != 'player' and not slither.intraining:
                 tmp = slither.returnCords()
                 tx, ty = self.convCords(tmp[1],tmp[0])
                 dir = slither.\
                         controller.set_action(self.slitherField,
                                               [tx, ty],
                                               self.makeFoodList())
-
                 self.engine_move(slither.returnIndex(), dir)
+            if slither.is_alive and slither.controller != 'player' and slither.intraining:
+                slither.action = slither.controller.neural_network.choose_action(
+                    self.slitherField,
+                    slither.controller.neural_network.primary_network,
+                    slither.controller.eps
+                )
+                self.engine_move(slither.indexNumber, slither.action)
 
         for slither in self.mySlithers:
             if slither.is_alive:
                 slither.moveHead()
 
         self.updateSlitherinField()
+
+        if self.training_mode:
+            for slither in self.mySlithers:
+                if slither.intraining:
+                    slither.controller.train_slither(
+                    self.previous_state.copy(),
+                    slither.action,
+                    5 if slither.has_eaten else 1,
+                    self.slitherField.copy(),
+                    slither.is_alive,
+                    slither.score
+                    )
+
+
         self.repaint()
 
     def engine_move(self, sindex, d):
@@ -775,18 +799,20 @@ class SlitherField(QtWidgets.QMainWindow):
 
 
     def slither_death(self, sindex):
+        self.mySlithers[sindex].is_alive = False
+        self.slithAlive -=1
+        self.total_moves += self.move
         print('Slither {} died'.format(sindex))
         self.arg_score = -100
-
-        if self.training_mode:
-            self.sE[0].memory.add_sample(
-                (
-                self.previous_state,
-                self.action,
-                self.arg_score,                                                 # Penalty for dying
-                self.slitherField.copy()
+        if self.training_mode and self.mySlithers[sindex].intraining:
+            self.mySlithers[sindex].controller.train_slither(
+                    self.previous_state.copy(),
+                    self.mySlithers[sindex].action,
+                    self.arg_score,
+                    self.slitherField.copy(),
+                    self.mySlithers[sindex].is_alive,
+                    self.mySlithers[sindex].score
                 )
-            )
 
         for m in self.mySlithers[sindex].memberList:
             tempx, tempy = m.returnCords()
@@ -796,14 +822,6 @@ class SlitherField(QtWidgets.QMainWindow):
         tempx, tempy = self.convCords(tempx, tempy)
         if self.slitherField.iloc[tempy, tempx]!=1:
             self.slitherField.iloc[tempy, tempx]=0
-        self.mySlithers[sindex].is_alive = False
-        self.slithAlive -=1
-        self.total_moves += self.move
-
-        if self.training_mode:
-            print(f"Episode: {self.counter}, Score: {self.mySlithers[0].score}, 'Moves': {self.move}, avg loss: {self.avg_loss/self.move:.3f}, eps: {self.eps:.3f}")
-
-
 
 
     def printScore(self):
@@ -855,72 +873,12 @@ class SlitherField(QtWidgets.QMainWindow):
             foodList.append([tmpy, tmpx])
         return foodList
 
-    def init_sNN(self):
-        self.sE = []
-        for s in self.mySlithers:
-            if s.intraining:
-                self.sE.append(sai.sNN(s.indexNumber))
-
-        self.eps = self.sE[0].MAX_EPSILON
-        self.arg_score = 0
-
-    def train_iteration(self):
-        self.previous_state = self.slitherField.copy()
-        self.action = self.sE[0].choose_action(
-            self.slitherField,
-            self.sE[0].primary_network,
-            self.eps
-            )
-        self.move += 1
-        self.engine_move(0, self.action)
-        self.moveSlither()
-
-
-        if self.mySlithers[0].has_eaten:
-            self.arg_score = self.mySlithers[0].has_eaten*1
-        else:
-            self.arg_score = 1
-
-
-
-        self.sE[0].memory.add_sample(
-            (
-            self.previous_state,
-            self.action,
-            self.arg_score,
-            self.slitherField.copy()
-            )
-        )
-
-
-        self.direction = {
-          0: 'up',
-          1: 'down',
-          2: 'left',
-          3: 'right'
-        }
-
-        loss = self.sE[0].train(self.sE[0].primary_network,
-                                self.sE[0].memory,
-                                # self.sE[0].target_network
-                                )
-
-        self.avg_loss += loss
-        self.eps = self.sE[0].MIN_EPSILON + (self.sE[0].MAX_EPSILON - self.sE[0].MIN_EPSILON) * math.exp(- self.sE[0].LAMBDA * self.total_moves)
-
-        if self.slithAlive == 0:
-            self.avg_loss /= self.move
-            print(f"Episode: {self.counter}, Reward: {self.mySlithers[0].score}, 'Moves': {self.move}, avg loss: {self.avg_loss:.3f}, eps: {self.eps:.3f}")
-            with self.sE[0].train_writer.as_default():
-                tf.summary.scalar('reward', self.move, step=self.counter)
-                tf.summary.scalar('avg loss', self.avg_loss, step=self.counter)
-            self.timer.stop()
 
     def train(self):
         render = False
         double_q = True
         steps = 0
-        self.timer.timeout.connect(self.train_iteration)
+        self.timer.timeout.connect(self.moveSlither)
         self.timer.start()
 
 
@@ -952,8 +910,8 @@ if __name__=='__main__':
 
     snake = SlitherField(slither_count = 1,
                          slith_att     = slithers,
-                         episodes      = 1,
-                         training_mode = False,
+                         episodes      = 10000000,
+                         training_mode = True,
                          arena_width   = 10,
                          arena_height  = 10,
                          food_count    = 10)

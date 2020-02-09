@@ -44,30 +44,31 @@ class sNN():
         self.train_writer = tf.summary.create_file_writer(self.STORE_PATH + f"/DoubleQ_{dt.datetime.now().strftime('%d%m%Y%H%M')}")
         self.state_size = 144
         self.num_actions = 4
-        self.slither = slith
+        self.slither = slith                                                    # Can probly remove soon
         self.THRESHOLD = 1
         keras.backend.set_floatx('float64')
 
         self.primary_network = keras.Sequential([
             keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(self.num_actions)
         ])
 
-        self.target_network = None# keras.Sequential([
-            #keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            #keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            #keras.layers.Dense(484, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            #keras.layers.Dense(self.num_actions)
-        #])
+        self.target_network = None #keras.Sequential([
+        #     keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #     keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #     keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #     keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #     keras.layers.Dense(self.num_actions)
+        # ])
 
         self.primary_network.compile(optimizer=keras.optimizers.Adam(), loss='mse')
 

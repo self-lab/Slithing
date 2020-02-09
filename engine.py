@@ -31,6 +31,13 @@ class prototype():
           3: 'right'
         }
 
+        self.direction_mapping = {
+          'U': 0,
+          'D': 1,
+          'L': 2,
+          'R': 3,
+        }
+
 
     def set_action(self, Field, Head, Food):
         tmpA = self.create_adjmatrix(np.array(Field))
@@ -153,10 +160,11 @@ class prototype():
 
 
     def train_slither(self, state, action, reward, next_state,
-                      slith_alive, slith_score, slith_direction):
+                      slith_alive, slith_score, slith_direction, hx, hy):
         self.move += 1
-        print(slith_direction)
-
+        direction = self.direction_mapping[slith_direction]
+        state = self.myview(state, [hx,hy], 3, slith_direction)
+        next_state = self.myview(next_state, [hx,hy], 3, slith_direction)
         self.neural_network.memory.add_sample(
             (
             state,
@@ -171,11 +179,6 @@ class prototype():
                 self.neural_network.memory,
                 self.neural_network.target_network)
         self.avg_loss += self.loss
-
-        # if reward == 5:
-        #     print('State: ', state,'\n\nAction: ', action,'\n\nnext_state', next_state,'\nLoss:', loss)
-        #     import time
-        #     time.sleep(10)
 
         self.eps =\
             self.neural_network.MIN_EPSILON \
@@ -196,7 +199,7 @@ class prototype():
         self.move = 1
         self.avg_loss = 0
 
-    def myview(field, pos, rad, direction = 0):
+    def myview(self, field, pos, rad, direction):
         xlbound = max(pos[0]-rad,0)
         xubound = max(pos[0]+rad+1,0)
         ylbound = max(pos[1]-rad,0)
@@ -220,9 +223,11 @@ class prototype():
 
         tmp = pd.DataFrame(np.ones((2*rad+1,2*rad+1)))
 
-        tmp.iloc[x_offset if x_offset > 0 else None : x_offset if x_offset < 0 else None,
-                 y_offset if y_offset > 0 else None : y_offset if y_offset < 0 else None]\
-                 = field.iloc[xlbound:xubound, ylbound:yubound].values
+        tmp.iloc[x_offset if (x_offset is not None and x_offset > 0) else None\
+            : x_offset if (x_offset is not None and x_offset < 0) else None,\
+                y_offset if (y_offset is not None and y_offset > 0) else None \
+                : y_offset if (y_offset is not None and y_offset < 0) else None]\
+                = field.iloc[xlbound:xubound, ylbound:yubound].values
 
         if direction == 0:
             pass

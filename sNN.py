@@ -38,11 +38,11 @@ class sNN():
         self.MIN_EPSILON = 0.001
         self.LAMBDA = 0.005
         self.GAMMA = 0.7
-        self.BATCH_SIZE = 5000
+        self.BATCH_SIZE = 500
         self.TAU = 0.08
         self.RANDOM_REWARD_STD = 1.0
         self.train_writer = tf.summary.create_file_writer(self.STORE_PATH + f"/DoubleQ_{dt.datetime.now().strftime('%d%m%Y%H%M')}")
-        self.state_size = 144
+        self.state_size = 49
         self.num_actions = 4
         self.slither = slith                                                    # Can probly remove soon
         self.THRESHOLD = 1
@@ -87,7 +87,7 @@ class sNN():
             return direction
 
     def train(self, primary_network, memory, target_network=None):
-        if memory.num_samples < self.BATCH_SIZE * 1:
+        if memory.num_samples < self.BATCH_SIZE * 2:
             return 0
         batch = memory.sample(self.BATCH_SIZE)
         states = np.array([item[0].to_numpy().reshape(1,-1)[0] for item in batch])
@@ -97,6 +97,8 @@ class sNN():
 
         next_states = np.array([(np.zeros(self.state_size)
                                  if item[3] is None else item[3].to_numpy().reshape(1,-1)[0]) for item in batch])
+
+        primary_network.summary()
 
         # predict Q(s,a) given the batch of states
         #print(states.shape)

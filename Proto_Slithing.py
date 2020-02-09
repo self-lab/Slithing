@@ -181,6 +181,8 @@ class Slither(slitherHead):
         self.start_y = y                                                        # Starting Position after reset
         self.x = x
         self.y = y
+        self.px = x
+        self.py = y
         self.initial_mnumb = mnumb                                              # Members to Initialize
         self.mnumb = mnumb
         self.initial_direction = direction                                      # Initial direction
@@ -268,6 +270,8 @@ class Slither(slitherHead):
         for item in self.memberList:
             item.updateCords()
 
+        self.px = self.x
+        self.py = self.y
         if self.direction == 'R':
             self.x +=self.slitherSize
             self.lastkey = 'R'
@@ -599,6 +603,8 @@ class SlitherField(QtWidgets.QMainWindow):
 
         if self.training_mode:
             for slither in self.mySlithers:
+                x, y = self.convCords(slither.py, slither.px,
+                                     type='SF')
                 if slither.intraining:
                     slither.controller.train_slither(
                     self.previous_state.copy(),
@@ -607,8 +613,11 @@ class SlitherField(QtWidgets.QMainWindow):
                     self.slitherField.copy(),
                     slither.is_alive,
                     slither.score,
-                    slither.direction
+                    slither.direction,
+                    x,
+                    y
                     )
+
         self.repaint()
 
 
@@ -805,6 +814,9 @@ class SlitherField(QtWidgets.QMainWindow):
         print('Slither {} died'.format(sindex))
         self.arg_score = -100
         if self.training_mode and self.mySlithers[sindex].intraining:
+            x, y = self.convCords(self.mySlithers[sindex].py,
+                                  self.mySlithers[sindex].px,
+                                 type='SF')
             self.mySlithers[sindex].controller.train_slither(
                     self.previous_state.copy(),
                     self.mySlithers[sindex].action,
@@ -812,7 +824,8 @@ class SlitherField(QtWidgets.QMainWindow):
                     self.slitherField.copy(),
                     self.mySlithers[sindex].is_alive,
                     self.mySlithers[sindex].score,
-                    self.mySlithers[sindex].direction
+                    self.mySlithers[sindex].direction,
+                    x,y
                 )
 
         for m in self.mySlithers[sindex].memberList:

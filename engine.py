@@ -9,6 +9,7 @@ import random
 import math
 import datetime as dt
 import sNN as sai
+import time
 
 
 print(tf.__version__)
@@ -23,6 +24,9 @@ class prototype():
         self.eps = self.neural_network.MAX_EPSILON
         self.avg_loss = 0
         self.counter = 0
+        self.last_direction = None
+        self.radius = 5
+        self.num_states = (self.radius + 1)**2
 
         self.direction = {
           0: 'up',
@@ -38,46 +42,54 @@ class prototype():
           'R': 3,
         }
 
-        self.dir_up = {
-            0 : 0,
-            1 : 1,
-            2 : 2
+        self.direction_up = {
+            0: 0,
+            1: 0,
+            2: 1,
+            3: 2
         }
 
-        self.dir_down = {
-            0 : 1,
-            1 : 3,
-            2 : 2
+        self.direction_down = {
+            0: 0,
+            1: 0,
+            2: 2,
+            3: 1
         }
 
-        self.dir_left = {
-            0 : 2,
-            1 : 0,
-            2 : 1
+        self.direction_left = {
+            0: 2,
+            1: 1,
+            2: 0,
+            3: 0
         }
 
-        self.dir_right = {
-            0 : 1,
-            1 : 0,
-            2 : 1
+        self.direction_right = {
+            0: 1,
+            1: 2,
+            2: 0,
+            3: 0
         }
 
-    def convert_direction(self, direction, input):
+        self.slith_straight = {
+            0:0,
+            1:1,
+            2:2,
+            3:3
+        }
 
-        if direction in self.direction_mapping.keys():
-            direction = self.direction_mapping[direction]
+        self.slith_turn_left = {
+            0:2,
+            1:3,
+            2:1,
+            3:0
+        }
 
-        if direction == 0:
-            return input
-        if direction == 1:
-            return self.dir_down[input]
-        if direction == 2:
-            return self.dir_left[input]
-        if direction == 3:
-            return self.dir_right[input]
-
-
-
+        self.slith_turn_right = {
+            0:3,
+            1:2,
+            2:0,
+            3:1
+        }
 
     def set_action(self, Field, Head, Food):
         tmpA = self.create_adjmatrix(np.array(Field))
@@ -195,22 +207,46 @@ class prototype():
         else:
             pass
 
-    def slither_view(self, Field, Area):
-        pass
+
+    def conv_direction(self, previous_direction ,current_direction, to_slither_perspective = True):
+
+        if  to_slither_perspective:
+            if previous_direction == 0:
+                return self.direction_up[current_direction]
+            if previous_direction == 1:
+                return self.direction_down[current_direction]
+            if previous_direction == 2:
+                return self.direction_left[current_direction]
+            if previous_direction == 3:
+                return self.direction_right[current_direction]
+        else:
+            if previous_direction == 0:
+                return self.slith_straight[current_direction]
+            if previous_direction == 1:
+                return self.slith_turn_left[current_direction]
+            if previous_direction == 2:
+                return self.slith_turn_right[current_direction]
 
 
-    def train_slither(self, state, action, reward, next_state,
-                      slith_alive, slith_score, slith_direction, hx, hy):
+    def train_slither(self, state, reward, next_state,
+                      slith_alive, slith_score,
+                      slith_direction, slith_prev_direction, hx, hy):
+
 
         self.move += 1
-        direction = self.direction_mapping[slith_direction]
-        state = self.myview(state, [hx,hy], 3, slith_direction)
-        next_state = self.myview(next_state, [hx,hy], 3, slith_direction)
-        slith_normalized_direction = self.convert_direction(slith_direction, action)
+        cur_direction = self.direction_mapping[slith_direction]
+        slith_state = self.myview(state, [hx,hy], self.radius, slith_prev_direction)
+
+        slith_persp_direction = self.conv_direction(
+            self.direction_mapping[slith_prev_direction],
+            cur_direction
+            )
+        next_state = self.myview(next_state, [hx,hy], self.radius, slith_prev_direction)
+
         self.neural_network.memory.add_sample(
             (
-            state,
-            slith_normalized_direction,
+            slith_state,
+            slith_persp_direction,
             reward,
             next_state
             )
@@ -226,14 +262,14 @@ class prototype():
             self.neural_network.MIN_EPSILON \
             + (self.neural_network.MAX_EPSILON
             - self.neural_network.MIN_EPSILON)\
-            * math.exp(- self.neural_network.LAMBDA * self.total_moves)
+            * math.exp(- self.neural_network.LAMBDA * self.counter*10)
 
         if not slith_alive:
             self.print_status(slith_score)
 
     def print_status(self, slith_score):
         if self.loss > 0:
-            self.counter +=1
+            self.counter += 1
         print(f"Episode: {self.counter}, Reward: {slith_score}, 'Moves': {self.move}, avg loss: {self.avg_loss/self.move:.3f}, eps: {self.eps:.3f}")
         self.total_moves += self.move
         self.move = 1
@@ -279,12 +315,15 @@ class prototype():
 
         return pd.DataFrame(tmp)
 
-    def choose_action(self, state, primary_network, eps, pos, rad, direction):
-        if random.random() < min(eps, self.neural_network.THRESHOLD):
-            return random.randint(0, self.neural_network.num_actions - 1)
+
+    def choose_action(self, state, primary_network, eps, pos, rad,
+        slith_direction, slith_previous_direction):
+        if random.random() < max(eps, self.neural_network.THRESHOLD):
+            tmp = random.randint(0, self.neural_network.num_actions-1)
         else:
-            state = self.myview(state.copy(), pos, rad, direction)
-            tmp =  self.convert_direction(direction,
-                np.argmax(primary_network(state.to_numpy().reshape(1, -1))))
-            print(tmp)
-            return tmp
+            slither_state = self.myview(state, pos, rad, slith_direction)
+            tmp = np.argmax(primary_network(slither_state.to_numpy().reshape(1, -1)))
+
+        #print(tmp,self.direction_mapping[slith_direction], 'result -> ', self.conv_direction(tmp, self.direction_mapping[slith_direction], to_slither_perspective=False))
+
+        return self.conv_direction(tmp, self.direction_mapping[slith_direction], to_slither_perspective=False)

@@ -1,8 +1,7 @@
 '''
 Created on Sun May 26 16:49:51 2019
 @author: Milan Reichmann
-TO DO Clean up and Reward Function to +10 if slither finds food
-and -100 if slither rips
+
 '''
 
 #Standard Libraries
@@ -101,6 +100,7 @@ class slitherHead():
         self.y = y
         self.direction = 'R'
         self.lastkey = lastkey
+        self.previous_direction = self.direction
 
 
     def returnCords(self):
@@ -134,6 +134,7 @@ class slitherHead():
         '''This function ensures that no invalid movement occures by comparing
         to the last direction the Slither Moved.'''
         if self.lastkey != 'D':
+            self.previous_direction = self.direction
             self.direction = 'U'
 
 
@@ -141,6 +142,7 @@ class slitherHead():
         '''This function ensures that no invalid movement occures by comparing
         to the last direction the Slither Moved.'''
         if self.lastkey != 'R':
+            self.previous_direction = self.direction
             self.direction = 'L'
 
 
@@ -148,6 +150,7 @@ class slitherHead():
         '''This function ensures that no invalid movement occures by comparing
         to the last direction the Slither Moved.'''
         if self.lastkey != 'L':
+            self.previous_direction = self.direction
             self.direction = 'R'
 
 
@@ -155,6 +158,7 @@ class slitherHead():
         '''This function ensures that no invalid movement occures by comparing
         to the last direction the Slither Moved.'''
         if self.lastkey != 'U':
+            self.previous_direction = self.direction
             self.direction = 'D'
 
 
@@ -167,14 +171,14 @@ class slitherHead():
 
 
 class Slither(slitherHead):
-    def __init__(self, x, y,                                                    #x, y starting coordinates as Qt coordinates
-                 slitherSize,                                                   #A Slither knows its own size (in terms of pixels)
-                 indexNumber,                                                   #A Slither knows it's index number in the slitherfields slitherArray
-                 direction = 'R',                                               #Define initial movement direction
-                 mnumb=2,                                                       #Define how many members a given slither has upon initialisation
-                 basecol = qorange,                                             #Define Slither Fill Color as QtColor
-                 linecol = qgrey,                                               #Define Slither Line Color as QtColor
-                 engine  = 'player',                                            #Define whether slither controlled by ai or player
+    def __init__(self, x, y,                                                    # x, y starting coordinates as Qt coordinates
+                 slitherSize,                                                   # A Slither knows its own size (in terms of pixels)
+                 indexNumber,                                                   # A Slither knows it's index number in the slitherfields slitherArray
+                 direction = 'R',                                               # Define initial movement direction
+                 mnumb=2,                                                       # Define how many members a given slither has upon initialisation
+                 basecol = qorange,                                             # Define Slither Fill Color as QtColor
+                 linecol = qgrey,                                               # Define Slither Line Color as QtColor
+                 engine  = 'player',                                            # Define whether slither controlled by ai or player
                  intraining = False
                  ):
         self.start_x = x                                                        # Starting Position after reset
@@ -187,13 +191,13 @@ class Slither(slitherHead):
         self.mnumb = mnumb
         self.initial_direction = direction                                      # Initial direction
         self.lastkey = self.direction = direction
+        self.previous_direction = direction
         self.slitherSize = slitherSize
         self.indexNumber=indexNumber
         self.basecolor  = basecol
         self.linecolor  = linecol
         self.controller = engine
         self.intraining = intraining
-        self.action = None
         self.score = 0
         self.has_eaten = False
         self.is_alive = True
@@ -247,6 +251,11 @@ class Slither(slitherHead):
         if self.direction =='R':
             for member in self.memberList:
                 member.x = self.x - member.Pos*self.slitherSize
+                member.y = self.y
+
+        if self.direction == 'L':
+            for member in self.memberList:
+                member.x = self.x + member.Pos*self.slitherSize
                 member.y = self.y
 
 
@@ -449,7 +458,7 @@ class SlitherField(QtWidgets.QMainWindow):
 
         #SlitherScore 2
         self.mylabel2 = QtWidgets.QLabel(self)
-        self.mylabel2.setGeometry(QtCore.QRect(1200,10,100,20))
+        self.mylabel2.setGeometry(QtCore.QRect(350,10,100,20))
         self.mylabel2.setFont(QtGui.QFont('SansSerif',18))
         self.mylabel2.setText('0')
 
@@ -589,15 +598,18 @@ class SlitherField(QtWidgets.QMainWindow):
                 self.engine_move(slither.returnIndex(), dir)
             if slither.is_alive and slither.controller != 'player' and slither.intraining:
                 x, y = self.convCords(slither.y, slither.x)
-                slither.action = slither.controller.choose_action(
-                    self.slitherField,
-                    slither.controller.neural_network.primary_network,
-                    slither.controller.eps,
-                    [x,y],
-                    3,
-                    slither.direction
-                )
-                self.engine_move(slither.indexNumber, slither.action)
+
+                self.engine_move(slither.indexNumber,
+                                 slither.controller.choose_action(
+                                    self.slitherField,
+                                    slither.controller.neural_network.primary_network,
+                                    slither.controller.eps,
+                                    [x,y],
+                                    5,
+                                    slither.direction,
+                                    slither.previous_direction
+                                    )
+                                )
 
         for slither in self.mySlithers:
             if slither.is_alive:
@@ -609,17 +621,17 @@ class SlitherField(QtWidgets.QMainWindow):
             for slither in self.mySlithers:
                 x, y = self.convCords(slither.py, slither.px,
                                      type='SF')
-                if slither.intraining:
+                if slither.intraining and slither.is_alive:
                     slither.controller.train_slither(
-                    self.previous_state.copy(),
-                    slither.action,
-                    1 if slither.has_eaten else 0,
-                    self.slitherField.copy(),
-                    slither.is_alive,
-                    slither.score,
-                    slither.direction,
-                    x,
-                    y
+                        self.previous_state.copy(),
+                        10 if slither.has_eaten else 0,
+                        self.slitherField.copy(),
+                        slither.is_alive,
+                        slither.score,
+                        slither.direction,
+                        slither.previous_direction,
+                        x,
+                        y
                     )
 
         self.repaint()
@@ -713,7 +725,7 @@ class SlitherField(QtWidgets.QMainWindow):
         written to 2. Finally, the last Members previous Position is set to
         '0' as the last Member has moved 1 space.'''
 
-        #First Member must now be 2 instead of 'H'
+        # First Member must now be 2 instead of 'H'
         for slither in self.mySlithers:
             if slither.is_alive:
                 tempx, tempy = slither.\
@@ -721,7 +733,7 @@ class SlitherField(QtWidgets.QMainWindow):
                 tempx, tempy = self.convCords(tempx, tempy)                     # the one where the 'H' must be overwritten to 2
                 self.slitherField.iloc[tempy, tempx] = 2
 
-                #Last Member must now be '0' instead of 'H'
+                # Last Member must now be '0' instead of 'H'
                 tempx, tempy = slither.memberList[0].returnLastPos()
                 if tempx:                                                       # Hypothetically tempx does not exist,
                     tempx, tempy = self.convCords(tempx, tempy)                 # whenevever we are looking at the first frame
@@ -729,15 +741,15 @@ class SlitherField(QtWidgets.QMainWindow):
 
         for slither in self.mySlithers:
             if slither.is_alive:
-                #Update Head Position
+                # Update Head Position
                 tempx, tempy = slither.returnCords()                            # !Take Care, by construction,
                 tempx, tempy = self.convCords(tempx, tempy)                     # the call Slither.returnCords, returns the Heads Position
-                #before overwriting, check if the head leads to the termination
+                # before overwriting, check if the head leads to the termination
                 self.slitherStatus(tempx, tempy, slither.indexNumber)
                 if self.slitherField.iloc[tempy, tempx] != 1:
                     self.slitherField.iloc[tempy, tempx] = slither.indexNumber + 4
 
-        #Viewer
+        # Viewer
         if self.viewTable == 'on':
             self.view.setModel(self.model)
             self.view.show()
@@ -757,7 +769,7 @@ class SlitherField(QtWidgets.QMainWindow):
             return int(_tempx), int(_tempy)
 
         if type == 'QT':
-            #The first valid field is (margins_left, margins_upper)
+            # The first valid field is (margins_left, margins_upper)
             _tempx = x * self.slitherSize + \
                 self.margins['left'] - self.slitherSize
             _tempy = y * self.slitherSize + \
@@ -823,14 +835,16 @@ class SlitherField(QtWidgets.QMainWindow):
                                  type='SF')
             self.mySlithers[sindex].controller.train_slither(
                     self.previous_state.copy(),
-                    self.mySlithers[sindex].action,
                     self.arg_score,
                     self.slitherField.copy(),
                     self.mySlithers[sindex].is_alive,
                     self.mySlithers[sindex].score,
                     self.mySlithers[sindex].direction,
+                    self.mySlithers[sindex].previous_direction,
                     x,y
                 )
+
+
 
         for m in self.mySlithers[sindex].memberList:
             tempx, tempy = m.returnCords()
@@ -891,6 +905,13 @@ class SlitherField(QtWidgets.QMainWindow):
             foodList.append([tmpy, tmpx])
         return foodList
 
+    def slith_view_direction(self, sindex, slith_dir, sf_dir):
+        if sf_dir == 0:
+            pass
+        if sf_dir == 1:
+            pass
+
+
 
     def train(self):
         render = False
@@ -907,7 +928,7 @@ if __name__=='__main__':
     else:
         print('QApplication instance already exists: %s' % str(app))
 
-    s1 = [5,5,
+    s1 = [5,2,
           2,
           qorange,
           qgrey,
@@ -915,18 +936,26 @@ if __name__=='__main__':
           engine.prototype(),
           True]
 
-    s2 = [6,12,
+    s2 = [5,8,
           2,
           qred,
           qdark,
-          'R',
-          'player',
-          False]
+          'L',
+          engine.prototype(),
+          True]
+
+    # s2 = [6,12,
+    #       2,
+    #       qred,
+    #       qdark,
+    #       'R',
+    #       'player',
+    #       False]
           # engine.prototype()]
 
     slithers=[s1,s2]
 
-    snake = SlitherField(slither_count = 1,
+    snake = SlitherField(slither_count = 2,
                          slith_att     = slithers,
                          episodes      = 10000000,
                          training_mode = True,

@@ -8,6 +8,7 @@ from random import randrange
 import random
 import math
 import datetime as dt
+import time
 
 class Memory:
     def __init__(self, max_memory):
@@ -38,21 +39,23 @@ class sNN():
         self.MIN_EPSILON = 0.001
         self.LAMBDA = 0.005
         self.GAMMA = 0.7
-        self.BATCH_SIZE = 500
+        self.BATCH_SIZE = 5000
         self.TAU = 0.08
         self.RANDOM_REWARD_STD = 1.0
         self.train_writer = tf.summary.create_file_writer(self.STORE_PATH + f"/DoubleQ_{dt.datetime.now().strftime('%d%m%Y%H%M')}")
-        self.state_size = 49
+        self.state_size = 121
         self.num_actions = 3
         self.slither = slith                                                    # Can probly remove soon
-        self.THRESHOLD = 1
+        self.THRESHOLD = 0.01
         keras.backend.set_floatx('float64')
+
+
 
         self.primary_network = keras.Sequential([
             keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            #keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            #keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            #keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             # keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
@@ -62,13 +65,13 @@ class sNN():
             keras.layers.Dense(self.num_actions)
         ])
 
-        self.target_network = None #keras.Sequential([
-        #     keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #     keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #     keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #     keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #     keras.layers.Dense(self.num_actions)
-        # ])
+        self.target_network = None # keras.Sequential([
+             #keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+             #keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+             #keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+             #keras.layers.Dense(self.state_size, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+             #keras.layers.Dense(self.num_actions)
+         #])
 
         self.primary_network.compile(optimizer=keras.optimizers.Adam(), loss='mse')
 
@@ -80,15 +83,15 @@ class sNN():
         }
 
     def train(self, primary_network, memory, target_network=None):
-        if memory.num_samples < self.BATCH_SIZE * 2:
+        if memory.num_samples < self.BATCH_SIZE * 1:
             return 0
         batch = memory.sample(self.BATCH_SIZE)
         states = np.array([item[0].to_numpy().reshape(1,-1)[0] for item in batch])
         actions = np.array([val[1] for val in batch])
         rewards = np.array([val[2] for val in batch])
 
-#        if memory.num_samples == self.BATCH_SIZE * 2 +1:
-        pd.DataFrame(batch).to_excel('debugging.xlsx')
+        #if memory.num_samples == self.BATCH_SIZE * 2 +1:
+        #    pd.DataFrame(batch).to_excel('debugging.xlsx')
 
         next_states = np.array([(np.zeros(self.state_size)
                                  if item[3] is None else item[3].to_numpy().reshape(1,-1)[0]) for item in batch])
@@ -106,7 +109,7 @@ class sNN():
         valid_idxs = np.array(next_states).sum(axis=1) != 0
         batch_idxs = np.arange(self.BATCH_SIZE)
         if target_network is None:
-            updates[valid_idxs] =np.add(updates[valid_idxs], self.GAMMA * np.amax(prim_qtp1.numpy()[valid_idxs, :], axis=1), casting='unsafe')
+            updates[valid_idxs] = np.add(updates[valid_idxs], self.GAMMA * np.amax(prim_qtp1.numpy()[valid_idxs, :], axis=1), casting='unsafe')
         else:
             prim_action_tp1 = np.argmax(prim_qtp1.numpy(), axis=1)
             q_from_target = target_network(next_states)

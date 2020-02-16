@@ -19,7 +19,6 @@ rotate = pd.DataFrame(np.matrix(
  [1,1,1,1,1,1,1,1,1,1,1,1]]
 ))
 
-res = np.matmul(rotate,a)
 
 def myview(field, pos, rad, direction = 0):
     xlbound = max(pos[0]-rad,0)
@@ -77,3 +76,6 @@ tst.iloc[0:2,0:2]=tmp.iloc[0:2,0:2].values
 tmp.iloc[0:2,0:2]
 tst.shape[0]
 rotate
+
+if 'a'.ischar():
+    print('fml')
